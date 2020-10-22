@@ -32,7 +32,6 @@ def test_rapidTEG():
 
   if maxdiff >= 1.7 and indexmax >= 200:
       print(':(')
-      dataold = data
       data = data[:(indexmax)-5]
   else:
       print(':)')
