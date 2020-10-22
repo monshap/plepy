@@ -10,7 +10,8 @@ from pytest import approx
 
 from plepy import PLEpy
 
-def rapidTEG():
+@pytest.mark.slow
+def test_rapidTEG():
   pwd = os.getcwd()
   fpath = os.path.dirname(__file__)
   os.chdir(fpath)
@@ -180,4 +181,4 @@ def rapidTEG():
   assert pl_inst.parlb == approx(true_parlb, rel=1e-3)
 
 if __name__ == '__main__':
-    rapidTEG()
+    test_rapidTEG()
