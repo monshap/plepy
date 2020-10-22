@@ -5,9 +5,9 @@ import numpy as np
 import pandas as pd
 from pyomo.dae import ContinuousSet, DerivativeVar
 import pyomo.environ as penv
+import pytest
 from pytest import approx
 
-sys.path.append(os.path.abspath("../../"))
 from plepy import PLEpy
 
 def rapidTEG():
