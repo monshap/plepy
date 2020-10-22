@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from pyomo.dae import ContinuousSet, DerivativeVar
 import pyomo.environ as penv
+from pytest import approx
 
 sys.path.append(os.path.abspath("../../"))
 from plepy import PLEpy
@@ -147,12 +148,13 @@ def rapidTEG():
   #####################################################################
 
   # Create instance of PLEpy
-  pl_inst = PLEpy(model, ['k1f', 'k2', 'k3', 'Platelet'])
+  pl_inst = PLEpy(model, ['k1f', 'k2', 'k3', 'Platelet'],
+                  solver_kwds=opt.options)
 
   # Get profile likelihood estimates and (if they exist) confidence
   # intervals
   pl_inst.get_clims()
-  pl_inst.get_PL()
+  # pl_inst.get_PL()
 
   # Save results to JSON file
   # pl_inst.to_json('rapidTEG_solutions.json')
@@ -161,7 +163,21 @@ def rapidTEG():
   # pl_inst.load_json('rapidTEG_solutions.json')
 
   # Plot profile likelihood
-  pl_inst.plot_PL(join=True)
+  # pl_inst.plot_PL(join=True)
+  true_parub = {
+        "k1f": 19.77,
+        "k2": 0.7513,
+        "k3": 7.580,
+        "Platelet": 40.30
+    }
+  true_parlb = {
+        "k1f": 4.424,
+        "k2": 0.01850,
+        "k3": 3.089,
+        "Platelet": 34.57
+    }
+  assert pl_inst.parub == approx(true_parub, rel=1e-3)
+  assert pl_inst.parlb == approx(true_parlb, rel=1e-3)
 
 if __name__ == '__main__':
     rapidTEG()
