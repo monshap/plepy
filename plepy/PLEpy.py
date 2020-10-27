@@ -510,6 +510,10 @@ class PLEpy:
             self.plist[pname][idx].free()
         return pCI
 
+    def ipopt_search(self, pname: str, clevel: float, direct: int=1,
+                     idx=None) -> float:
+        pass
+
     def get_clims(self, pnames='all', alpha: float=0.05, acc: float=0.001):
         """Get confidence limits of parameters
         Keywords
