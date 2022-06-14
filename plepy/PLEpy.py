@@ -424,6 +424,8 @@ class PLEpy:
         if fcheck == 0 and err < clevel:
             pCI = no_lim
             print('No %s CI! Setting to %s bound.' % (plc, plc))
+            print('Error at bound: %3.2f' % (err))
+            print('Confidence threshold: %3.2f' % (clevel))
         else:
             fiter = 0
             # If solution is infeasible, find a new value for x_out
@@ -459,6 +461,8 @@ class PLEpy:
             if x_range < ctol:
                 pCI = no_lim
                 print('No %s CI! Setting to %s bound.' % (plc, plc))
+                print('Error at bound: %3.2f' % (err))
+                print('Confidence threshold: %3.2f' % (clevel))
             # otherwise, find the upper CI between outermost feasible
             # pt and optimal solution using binary search
             else:
