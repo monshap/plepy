@@ -514,7 +514,7 @@ class PLEpy:
             self.plist[pname][idx].free()
         return pCI
 
-    def get_clims(self, pnames="all", alpha: float=0.05, acc: float=0.001):
+    def get_clims(self, pnames="all", alpha: float=0.05, acc: float=0.01):
         """Get confidence limits of parameters
         Keywords
         --------
@@ -525,7 +525,7 @@ class PLEpy:
             confidence level, by default 0.05
         acc : float, optional
             maximum fractional difference between binary search bounds
-            allowed for convergence, by default 0.001
+            allowed for convergence, by default 0.01
         """
         if isinstance(pnames, str):
             if pnames == "all":
