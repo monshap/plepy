@@ -402,10 +402,10 @@ class PLEpy:
 
         # Print search info
         print(" "*80)
-        print("Parameter: {:s}".format(pname))
+        print(f"Parameter: {pname}")
         if idx is not None:
-            print("Index: {:s}".format(str(idx)))
-        print("Bound: {:s}".format(puc))
+            print(f"Index: {idx}")
+        print(f"Bound: {puc}")
         print(" "*80)
 
         # check convergence criteria
