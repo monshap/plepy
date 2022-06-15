@@ -398,7 +398,7 @@ class PLEpy:
         float
             value of parameter bound
         """
-        from plepy.helper import sflag
+        from plepy.helper import sflag, sig_figs
 
         # manually change parameter of interest
         if idx is None:
@@ -457,9 +457,15 @@ class PLEpy:
             fiter = 0
             # If solution is infeasible, find a new value for x_out
             # that is feasible and above the confidence threshold.
+            print("Entering feasibility check...")
+            print(" "*80)
+            print("iter".center(10), "high".center(10), "low".center(10),
+                  sep=" | ")
+            print("-"*10, "-"*10, "-"*10, sep="-+-")
             while (fcheck == 1 or err < clevel) and x_range > ctol:
-                print((f"f_iter: {fiter:g}, x_high: {x_high:4f}, "
-                       f"x_low: {x_low:4f}"))
+                hstr = f"{sig_figs(x_high, 3)}"
+                lstr = f"{sig_figs(x_low, 3)}"
+                print(f"{fiter:^10}", f"{hstr:>10}", f"{lstr:>10}", sep=" | ")
                 # check convergence criteria
                 x_range = x_high - x_low
                 ctol = x_high*acc
@@ -487,6 +493,7 @@ class PLEpy:
             # if convergence reached, there is no upper CI
             if x_range < ctol:
                 pCI = no_lim
+                print(" "*80)
                 print(f"No {plc} CI! Setting to {plc} bound.")
                 print(f"Error at bound: {err:3.2f}")
                 print(f"Confidence threshold: {clevel:3.2f}")
@@ -494,6 +501,10 @@ class PLEpy:
             # pt and optimal solution using binary search
             else:
                 x_out = float(x_mid)
+                print(" "*80)
+                print(f"Feasibile limit: {x_out:3.2f}")
+                print(" "*80)
+                print("Continuing with binary search...")
                 if direct:
                     x_high = x_out
                     x_low = x_in
@@ -502,10 +513,16 @@ class PLEpy:
                     x_low = x_out
                 biter = 0
                 # repeat until convergence criteria is met
-                # (i.e. x_high = x_low)
+                # (i.e. x_high - x_low < x_high*acc)
+                print(" "*80)
+                print("iter".center(10), "high".center(10), "low".center(10),
+                    sep=" | ")
+                print("-"*10, "-"*10, "-"*10, sep="-+-")
                 while x_range > ctol:
-                    print((f"b_iter: {biter}, x_high: {x_high:4f}, "
-                           f"x_low: {x_low:4f}"))
+                    hstr = f"{sig_figs(x_high, 3)}"
+                    lstr = f"{sig_figs(x_low, 3)}"
+                    print(f"{biter:^10}", f"{hstr:>10}", f"{lstr:>10}",
+                          sep=" | ")
                     # check convergence criteria
                     x_range = x_high - x_low
                     ctol = x_high*acc
@@ -532,6 +549,7 @@ class PLEpy:
                         x_high = x_in
                         x_low = x_out
                 pCI = x_mid
+                print(" "*80)
                 print(f"{puc} CI of {pCI:4f} found!")
         # reset parameter
         self.setval(pname, self.popt[pname])
