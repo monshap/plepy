@@ -1,6 +1,17 @@
 import numpy as np
 
 
+def sig_figs(x, n):
+    # round x to n significant figures
+    import math
+
+    if x == 0:
+        first_sig_fig = 0
+    else:
+        first_sig_fig = math.floor(math.log10(abs(x)))
+    return round(x, -(first_sig_fig - (n-1)))
+
+
 def recur_to_json(d: dict) -> dict:
     # recurssively convert dictionaries to compatible forms for JSON
     # serialization (keys must be strings)
