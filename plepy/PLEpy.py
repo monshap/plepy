@@ -225,7 +225,7 @@ class PLEpy:
             # values at midpoint. Repeat until no large changes or
             # minimum step size is reached.
             while len(ierr) != 0:
-                print('iter: %i' % (itr))
+                print(f'iter: {itr}')
                 x_oerr = np.array([j for i, j in zip(ierr, x_out) if i])
                 x_ierr = np.array([j for i, j in zip(ierr, x_in) if i])
                 x_mid = 0.5*(x_oerr + x_ierr)
@@ -279,7 +279,7 @@ class PLEpy:
         PLdict = {}
         # generate profiles for parameters indicated
         for pname in pnames:
-            print('Profiling %s...' % (pname))
+            print(f'Profiling {pname}...')
             # make sure upper and lower confidence limits have been
             # specified or calculated using get_clims()
             emsg = ("Parameter confidence limits must be determined "
@@ -423,16 +423,16 @@ class PLEpy:
         # Set to bound.
         if fcheck == 0 and err < clevel:
             pCI = no_lim
-            print('No %s CI! Setting to %s bound.' % (plc, plc))
-            print('Error at bound: %3.2f' % (err))
-            print('Confidence threshold: %3.2f' % (clevel))
+            print(f'No {plc} CI! Setting to {plc} bound.')
+            print(f'Error at bound: {err:3.2f}')
+            print(f'Confidence threshold: {clevel:3.2f}')
         else:
             fiter = 0
             # If solution is infeasible, find a new value for x_out
             # that is feasible and above the confidence threshold.
             while (fcheck == 1 or err < clevel) and x_range > ctol:
-                print('f_iter: %i, x_high: %f, x_low: %f'
-                        % (fiter, x_high, x_low))
+                print((f'f_iter: {fiter:g}, x_high: {x_high:4f}, '
+                       f'x_low: {x_low:4f}'))
                 # check convergence criteria
                 x_range = x_high - x_low
                 ctol = x_high*acc
@@ -460,9 +460,9 @@ class PLEpy:
             # if convergence reached, there is no upper CI
             if x_range < ctol:
                 pCI = no_lim
-                print('No %s CI! Setting to %s bound.' % (plc, plc))
-                print('Error at bound: %3.2f' % (err))
-                print('Confidence threshold: %3.2f' % (clevel))
+                print(f'No {plc} CI! Setting to {plc} bound.')
+                print(f'Error at bound: {err:3.2f}')
+                print(f'Confidence threshold: {clevel:3.2f}')
             # otherwise, find the upper CI between outermost feasible
             # pt and optimal solution using binary search
             else:
@@ -477,8 +477,8 @@ class PLEpy:
                 # repeat until convergence criteria is met
                 # (i.e. x_high = x_low)
                 while x_range > ctol:
-                    print('b_iter: %i, x_high: %f, x_low: %f'
-                            % (biter, x_high, x_low))
+                    print((f'b_iter: {biter}, x_high: {x_high:4f}, '
+                           f'x_low: {x_low:4f}'))
                     # check convergence criteria
                     x_range = x_high - x_low
                     ctol = x_high*acc
@@ -505,7 +505,7 @@ class PLEpy:
                         x_high = x_in
                         x_low = x_out
                 pCI = x_mid
-                print('%s CI of %f found!' % (puc, pCI))
+                print(f'{puc} CI of {pCI:4f} found!')
         # reset parameter
         self.setval(pname, self.popt[pname])
         if idx is None:
@@ -576,7 +576,7 @@ class PLEpy:
                     sv_var = recur_to_json(sv_var)
                 sv_dict[att] = sv_var
             except AttributeError:
-                print("Attribute '%s' does not exist. Skipping." % (att))
+                print(f"Attribute '{att}' does not exist. Skipping.")
         # write to JSON file
         with open(filename, 'w') as f:
             json.dump(sv_dict, f)
@@ -602,4 +602,4 @@ class PLEpy:
                     sv_var = recur_load_json(sv_var)
                 setattr(self, att, sv_var)
             except KeyError:
-                print("Attribute '%s' not yet defined." % (att))
+                print(f"Attribute '{att}' not yet defined.")
