@@ -162,9 +162,12 @@ class PLEpy:
         fname: str or path, optional
             location to save JSON file (if save=True),
             by default "tmp_PLfile.json"
+        debug: bool, optional
+            whether to print additional information during profiling, by
+            default False
         """
 
-        def inner_loop(xopt, xb, direct=1, idx=None, debug=debug) -> dict:
+        def inner_loop(xopt, xb, direct=1, idx=None, debug=False) -> dict:
             from plepy.helper import sflag, sig_figs
 
             pdict = {}
@@ -312,9 +315,12 @@ class PLEpy:
                     xopt = self.popt[pname][k]
                     xlb = self.parlb[pname][k]
                     xub = self.parub[pname][k]
-                    print("xopt: ", xopt, "xlb: ", xlb, "xub: ", xub)
-                    kPLup = inner_loop(xopt, xub, direct=1, idx=k)
-                    kPLdn = inner_loop(xopt, xlb, direct=0, idx=k)
+                    print(f"Index: {k}")
+                    print(f"Optimized value: {sig_figs(xopt, 3)}",
+                          f"Lower C.L.: {sig_figs(xlb, 3)}",
+                          f"Upper C.L.: {sig_figs(xub, 3)}", sep="\n")
+                    kPLup = inner_loop(xopt, xub, direct=1, idx=k, debug=debug)
+                    kPLdn = inner_loop(xopt, xlb, direct=0, idx=k, debug=debug)
                     kPL = {**kPLup, **kPLdn}
                     parPL[k] = kPL
                     self.plist[pname][k].free()
@@ -325,8 +331,11 @@ class PLEpy:
                 xlb = self.parlb[pname]
                 xub = self.parub[pname]
                 # discretize each half separately
-                parPLup = inner_loop(xopt, xub, direct=1)
-                parPLdn = inner_loop(xopt, xlb, direct=0)
+                print(f"Optimized value: {sig_figs(xopt, 3)}",
+                      f"Lower C.L.: {sig_figs(xlb, 3)}",
+                      f"Upper C.L.: {sig_figs(xub, 3)}", sep="\n")
+                parPLup = inner_loop(xopt, xub, direct=1, debug=debug)
+                parPLdn = inner_loop(xopt, xlb, direct=0, debug=debug)
                 # combine results into parameter profile likelihood
                 parPL = {**parPLup, **parPLdn}
                 PLdict[pname] = parPL
