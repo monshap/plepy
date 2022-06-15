@@ -166,6 +166,7 @@ class PLEpy:
             whether to print additional information during profiling, by
             default False
         """
+        from plepy.helper import sig_figs
 
         def inner_loop(xopt, xb, direct=1, idx=None, debug=False) -> dict:
             from plepy.helper import sflag, sig_figs
