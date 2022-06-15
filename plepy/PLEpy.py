@@ -400,6 +400,63 @@ class PLEpy:
         """
         from plepy.helper import sflag, sig_figs
 
+        def feasible_bound(pname, x_mid, x_in, r_mid, clevel, ctol, direct=1,
+                           idx=None):
+            # Find furthest feasible bound
+            print("Entering feasibility check...")
+            print(" "*80)
+            print("iter".center(10), "high".center(10), "low".center(10),
+                sep=" | ")
+            print("-"*10, "-"*10, "-"*10, sep="-+-")
+
+            self.m.solutions.load_from(r_mid)
+            err = np.log(pe.value(self.m.obj))
+            if direct:
+                x_high = x_mid
+                x_low = x_in
+            else:
+                x_high = x_in
+                x_low = x_mid
+            fiter = 0
+            while (fcheck == 1 or err < clevel) and x_range > ctol:
+                hstr = f"{sig_figs(x_high, 3)}"
+                lstr = f"{sig_figs(x_low, 3)}"
+                print(f"{fiter:^10}", f"{hstr:>10}", f"{lstr:>10}", sep=" | ")
+                # check convergence criteria
+                x_range = x_high - x_low
+                ctol = x_high*acc
+                # evaluate at midpoint
+                x_mid = 0.5*(x_high + x_low)
+                r_mid = self.m_eval(pname, x_mid, idx)
+                fcheck = sflag(r_mid)
+                # if infeasible, continue search inward from current
+                # midpoint
+                if fcheck == 1:
+                    x_out = float(x_mid)
+                self.m.solutions.load_from(r_mid)
+                err = np.log(pe.value(self.m.obj))
+                # if feasbile, but not over CL threshold, continue
+                # search outward from current midpoint
+                if fcheck == 0 and err < clevel:
+                    x_in = float(x_mid)
+                if direct:
+                    x_high = x_out
+                    x_low = x_in
+                else:
+                    x_high = x_in
+                    x_low = x_out
+                fiter += 1
+            x_out = float(x_mid)
+            print(" "*80)
+            print(f"Feasibile limit: {sig_figs(x_out, 3)}")
+            print(" "*80)
+            r_mid = self.m_eval(pname, x_mid, idx=idx)
+            fcheck = sflag(r_mid)
+            if fcheck == 0:
+                print("Continuing with binary search...")
+                print(" "*80)
+            return x_out, r_mid, fcheck
+
         # manually change parameter of interest
         if idx is None:
             self.plist[pname].fix()
@@ -443,45 +500,65 @@ class PLEpy:
         # evaluate at outer bound
         r_mid = self.m_eval(pname, x_mid, idx=idx)
         fcheck = sflag(r_mid)
+        # If solution is infeasible, trigger search for feasible bound
+        if fcheck == 1:
+            x_out, r_mid, fcheck = feasible_bound(pname, x_mid, x_in, r_mid,
+                                                  clevel, ctol, direct=direct,
+                                                  idx=idx)
         self.m.solutions.load_from(r_mid)
         err = np.log(pe.value(self.m.obj))
+        # If solution is *still* infeasible, there is no feasible upper limit.
+        # Set to xopt
+        if fcheck == 1:
+            pCI = x_out
+            print(f"No feasible {plc} CI! Setting to optimum value.")
+            print(f"Error at bound: {sig_figs(err, 3)}")
+            print(f"Confidence threshold: {sig_figs(clevel, 3)}")
         # If solution is feasible and the error is less than the value
         # at the confidence limit, there is no CI in that direction.
         # Set to bound.
-        if fcheck == 0 and err < clevel:
-            pCI = no_lim
+        elif fcheck == 0 and err < clevel:
+            pCI = x_out
             print(f"No {plc} CI! Setting to {plc} bound.")
-            print(f"Error at bound: {err:3.2f}")
-            print(f"Confidence threshold: {clevel:3.2f}")
+            print(f"Error at bound: {sig_figs(err, 3)}")
+            print(f"Confidence threshold: {sig_figs(clevel, 3)}")
         else:
-            fiter = 0
-            # If solution is infeasible, find a new value for x_out
-            # that is feasible and above the confidence threshold.
-            print("Entering feasibility check...")
+            if direct:
+                x_high = x_out
+                x_low = x_in
+            else:
+                x_high = x_in
+                x_low = x_out
+            biter = 0
+            # repeat until convergence criteria is met
+            # (i.e. x_high - x_low < x_high*acc)
             print(" "*80)
             print("iter".center(10), "high".center(10), "low".center(10),
-                  sep=" | ")
+                sep=" | ")
             print("-"*10, "-"*10, "-"*10, sep="-+-")
-            while (fcheck == 1 or err < clevel) and x_range > ctol:
+            while x_range > ctol:
                 hstr = f"{sig_figs(x_high, 3)}"
                 lstr = f"{sig_figs(x_low, 3)}"
-                print(f"{fiter:^10}", f"{hstr:>10}", f"{lstr:>10}", sep=" | ")
+                print(f"{biter:^10}", f"{hstr:>10}", f"{lstr:>10}",
+                        sep=" | ")
                 # check convergence criteria
                 x_range = x_high - x_low
                 ctol = x_high*acc
                 # evaluate at midpoint
                 x_mid = 0.5*(x_high + x_low)
-                r_mid = self.m_eval(pname, x_mid, idx)
+                r_mid = self.m_eval(pname, x_mid, idx=idx)
                 fcheck = sflag(r_mid)
-                # if infeasible, continue search inward from current
-                # midpoint
-                if fcheck == 1:
-                    x_out = float(x_mid)
                 self.m.solutions.load_from(r_mid)
                 err = np.log(pe.value(self.m.obj))
-                # if feasbile, but not over CL threshold, continue
-                # search outward from current midpoint
-                if fcheck == 0 and err < clevel:
+                biter += 1
+                # if midpoint infeasible, continue search inward
+                if fcheck == 1:
+                    x_out = float(x_mid)
+                # if midpoint over CL, continue search inward
+                elif err > clevel:
+                    x_out = float(x_mid)
+                # if midpoint under CL, continue search outward
+                else:
                     x_in = float(x_mid)
                 if direct:
                     x_high = x_out
@@ -489,68 +566,9 @@ class PLEpy:
                 else:
                     x_high = x_in
                     x_low = x_out
-                fiter += 1
-            # if convergence reached, there is no upper CI
-            if x_range < ctol:
-                pCI = no_lim
-                print(" "*80)
-                print(f"No {plc} CI! Setting to {plc} bound.")
-                print(f"Error at bound: {err:3.2f}")
-                print(f"Confidence threshold: {clevel:3.2f}")
-            # otherwise, find the upper CI between outermost feasible
-            # pt and optimal solution using binary search
-            else:
-                x_out = float(x_mid)
-                print(" "*80)
-                print(f"Feasibile limit: {x_out:3.2f}")
-                print(" "*80)
-                print("Continuing with binary search...")
-                if direct:
-                    x_high = x_out
-                    x_low = x_in
-                else:
-                    x_high = x_in
-                    x_low = x_out
-                biter = 0
-                # repeat until convergence criteria is met
-                # (i.e. x_high - x_low < x_high*acc)
-                print(" "*80)
-                print("iter".center(10), "high".center(10), "low".center(10),
-                    sep=" | ")
-                print("-"*10, "-"*10, "-"*10, sep="-+-")
-                while x_range > ctol:
-                    hstr = f"{sig_figs(x_high, 3)}"
-                    lstr = f"{sig_figs(x_low, 3)}"
-                    print(f"{biter:^10}", f"{hstr:>10}", f"{lstr:>10}",
-                          sep=" | ")
-                    # check convergence criteria
-                    x_range = x_high - x_low
-                    ctol = x_high*acc
-                    # evaluate at midpoint
-                    x_mid = 0.5*(x_high + x_low)
-                    r_mid = self.m_eval(pname, x_mid, idx=idx)
-                    fcheck = sflag(r_mid)
-                    self.m.solutions.load_from(r_mid)
-                    err = np.log(pe.value(self.m.obj))
-                    biter += 1
-                    # if midpoint infeasible, continue search inward
-                    if fcheck == 1:
-                        x_out = float(x_mid)
-                    # if midpoint over CL, continue search inward
-                    elif err > clevel:
-                        x_out = float(x_mid)
-                    # if midpoint under CL, continue search outward
-                    else:
-                        x_in = float(x_mid)
-                    if direct:
-                        x_high = x_out
-                        x_low = x_in
-                    else:
-                        x_high = x_in
-                        x_low = x_out
-                pCI = x_mid
-                print(" "*80)
-                print(f"{puc} CI of {pCI:4f} found!")
+            pCI = x_mid
+            print(" "*80)
+            print(f"{puc} CI of {sig_figs(pCI, 3)} found!")
         # reset parameter
         self.setval(pname, self.popt[pname])
         if idx is None:
