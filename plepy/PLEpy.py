@@ -625,26 +625,17 @@ class PLEpy:
         for pname in pnames:
             # for indexed variables
             if self.pindexed[pname]:
-                f = 0
-                print(f)
                 if idx is not None:
                     parlb[pname][idx] = self.bsearch(pname, clevel, acc,
                                                      direct=0, idx=idx)
-                    print(parlb)
                     parub[pname][idx] = self.bsearch(pname, clevel, acc,
                                                      direct=1, idx=idx)
-                    print(parub)
-                    print(self.popt)
                 else:
                     for idx in self.pidx[pname]:
                         parlb[pname][idx] = self.bsearch(pname, clevel, acc,
                                                         direct=0, idx=idx)
-                        print(parlb)
                         parub[pname][idx] = self.bsearch(pname, clevel, acc,
                                                         direct=1, idx=idx)
-                        print(parub)
-                        print(self.popt)
-                        f += 1
             # for unindexed variables
             else:
                 parlb[pname] = self.bsearch(pname, clevel, acc, direct=0)
