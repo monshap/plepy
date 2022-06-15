@@ -398,10 +398,11 @@ class PLEpy:
         float
             value of parameter bound
         """
+        import math
         from plepy.helper import sflag, sig_figs
 
         def feasible_bound(pname, x_mid, x_in, r_mid, clevel, ctol, direct=1,
-                           idx=None):
+                           idx=None, nsig=3):
             # Find furthest feasible bound
             print("Entering feasibility check...")
             print(" "*80)
@@ -419,8 +420,8 @@ class PLEpy:
                 x_low = x_mid
             fiter = 0
             while (fcheck == 1 or err < clevel) and x_range > ctol:
-                hstr = f"{sig_figs(x_high, 3)}"
-                lstr = f"{sig_figs(x_low, 3)}"
+                hstr = f"{sig_figs(x_high, nsig)}"
+                lstr = f"{sig_figs(x_low, nsig)}"
                 print(f"{fiter:^10}", f"{hstr:>10}", f"{lstr:>10}", sep=" | ")
                 # check convergence criteria
                 x_range = x_high - x_low
@@ -448,7 +449,7 @@ class PLEpy:
                 fiter += 1
             x_out = float(x_mid)
             print(" "*80)
-            print(f"Feasibile limit: {sig_figs(x_out, 3)}")
+            print(f"Feasibile limit: {sig_figs(x_out, nsig)}")
             print(" "*80)
             r_mid = self.m_eval(pname, x_mid, idx=idx)
             fcheck = sflag(r_mid)
@@ -457,6 +458,8 @@ class PLEpy:
                 print(" "*80)
             return x_out, r_mid, fcheck
 
+        # Number of sig. figs to print (based on acc)
+        nsig = -math.log10(acc) + 2
         # manually change parameter of interest
         if idx is None:
             self.plist[pname].fix()
@@ -512,16 +515,16 @@ class PLEpy:
         if fcheck == 1:
             pCI = x_out
             print(f"No feasible {plc} CI! Setting to optimum value.")
-            print(f"Error at bound: {sig_figs(err, 3)}")
-            print(f"Confidence threshold: {sig_figs(clevel, 3)}")
+            print(f"Error at bound: {sig_figs(err, nsig)}")
+            print(f"Confidence threshold: {sig_figs(clevel, nsig)}")
         # If solution is feasible and the error is less than the value
         # at the confidence limit, there is no CI in that direction.
         # Set to bound.
         elif fcheck == 0 and err < clevel:
             pCI = x_out
             print(f"No {plc} CI! Setting to {plc} bound.")
-            print(f"Error at bound: {sig_figs(err, 3)}")
-            print(f"Confidence threshold: {sig_figs(clevel, 3)}")
+            print(f"Error at bound: {sig_figs(err, nsig)}")
+            print(f"Confidence threshold: {sig_figs(clevel, nsig)}")
         else:
             if direct:
                 x_high = x_out
@@ -537,8 +540,8 @@ class PLEpy:
                 sep=" | ")
             print("-"*10, "-"*10, "-"*10, sep="-+-")
             while x_range > ctol:
-                hstr = f"{sig_figs(x_high, 3)}"
-                lstr = f"{sig_figs(x_low, 3)}"
+                hstr = f"{sig_figs(x_high, nsig)}"
+                lstr = f"{sig_figs(x_low, nsig)}"
                 print(f"{biter:^10}", f"{hstr:>10}", f"{lstr:>10}",
                         sep=" | ")
                 # check convergence criteria
@@ -568,7 +571,7 @@ class PLEpy:
                     x_low = x_out
             pCI = x_mid
             print(" "*80)
-            print(f"{puc} CI of {sig_figs(pCI, 3)} found!")
+            print(f"{puc} CI of {sig_figs(pCI, nsig)} found!")
         # reset parameter
         self.setval(pname, self.popt[pname])
         if idx is None:
