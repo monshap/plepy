@@ -135,7 +135,8 @@ class PLEpy:
         return clevel
 
     def get_PL(self, pnames="all", n: int=20, min_step: float=1e-3,
-               dtol: float=0.2, save: bool=False, fname="tmp_PLfile.json"):
+               dtol: float=0.2, save: bool=False, fname="tmp_PLfile.json",
+               debug=False):
         """Once bounds are found, calculate likelihood profiles for
         each parameter
 
@@ -163,8 +164,8 @@ class PLEpy:
             by default "tmp_PLfile.json"
         """
 
-        def inner_loop(xopt, xb, direct=1, idx=None) -> dict:
-            from plepy.helper import sflag
+        def inner_loop(xopt, xb, direct=1, idx=None, debug=debug) -> dict:
+            from plepy.helper import sflag, sig_figs
 
             pdict = {}
             if direct:
@@ -173,7 +174,10 @@ class PLEpy:
             else:
                 print("Going down...")
                 x0 = np.linspace(xb, xopt, n+2, endpoint=True)
-            print("x0:", x0)
+            if debug:
+                sfs = [f"{sig_figs(xi, 3):0<4}" for xi in x0]
+                xstr = ", ".join([f"{sf:>5}" for sf in sfs])
+                print("Evaluating at:".ljust(17), f"[{xstr}]")
             # evaluate objective at each discretization point
             for w, x in enumerate(x0):
                 xdict = {}
@@ -204,7 +208,10 @@ class PLEpy:
             # calculate magnitude of step sizes
             dx = x_out - x_in
             y0 = np.array([pdict[x]["obj"] for x in x0])
-            print("y0:", y0)
+            if debug:
+                sfs = [f"{sig_figs(yi, 3):0<4}" for yi in y0]
+                ystr = ", ".join([f"{sf:>5}" for sf in sfs])
+                print("Objective values:".ljust(17), f"[{ystr}]")
             if direct:
                 y_out = y0[1:]
                 y_in = y0[:-1]
@@ -219,7 +226,9 @@ class PLEpy:
             # minimum
             ierr = [(i > dtol and j > min_step)
                              for i, j in zip(dy, dx)]
-            print("ierr:", ierr)
+            if debug:
+                bstr = ", ".join([f"{b!s:>5}" for b in ierr])
+                print("Discretize again:".ljust(17), f"[{bstr}]")
             itr = 0
             # For intervals of large change (above dtol), calculate
             # values at midpoint. Repeat until no large changes or
@@ -248,13 +257,19 @@ class PLEpy:
                 # get parameter values needed to calculate change in
                 # error over intervals that have not converged
                 x0 = np.array(sorted(set([*x_oerr, *x_mid, *x_ierr])))
-                print("x0:", x0)
+                if debug:
+                    sfs = [f"{sig_figs(xi, 3):0<4}" for xi in x0]
+                    xstr = ", ".join([f"{sf:>5}" for sf in sfs])
+                    print("Evaluating at:".ljust(17), f"[{xstr}]")
                 x_out = x0[1:]
                 x_in = x0[:-1]
                 # calculate magnitude of step sizes
                 dx = x_out - x_in
                 y0 = np.array([pdict[x]["obj"] for x in x0])
-                print("y0:", y0)
+                if debug:
+                    sfs = [f"{sig_figs(yi, 3):0<4}" for yi in y0]
+                    ystr = ", ".join([f"{sf:>5}" for sf in sfs])
+                    print("Objective values:".ljust(17), f"[{ystr}]")
                 y_out = y0[1:]
                 y_in = y0[:-1]
                 # calculate magnitude of objective value change between
@@ -265,7 +280,9 @@ class PLEpy:
                 # than minimum
                 ierr = [(i > dtol and j > min_step)
                                  for i, j in zip(dy, dx)]
-                print("ierr:", ierr)
+                if debug:
+                    bstr = ", ".join([f"{b!s:>5}" for b in ierr])
+                    print("Discretize again:".ljust(17), f"[{bstr}]")
                 itr += 1
             return pdict
 
