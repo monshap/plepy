@@ -459,7 +459,7 @@ class PLEpy:
             return x_out, r_mid, fcheck
 
         # Number of sig. figs to print (based on acc)
-        nsig = -math.log10(acc) + 2
+        nsig = int(-math.log10(acc) + 2)
         # manually change parameter of interest
         if idx is None:
             self.plist[pname].fix()
@@ -580,13 +580,17 @@ class PLEpy:
             self.plist[pname][idx].free()
         return pCI
 
-    def get_clims(self, pnames="all", alpha: float=0.05, acc: float=0.01):
+    def get_clims(self, pnames="all", idx=None, alpha: float=0.05,
+                  acc: float=0.01):
         """Get confidence limits of parameters
         Keywords
         --------
         pnames: list or str, optional
             name of parameter(s) to get confidence limits for, if "all"
             will find limits for all parameters, by default "all"
+        idx: optional
+            index of parameter to get confidence limits for - pnames must be
+            a single parameter, by default None
         alpha : float, optional
             confidence level, by default 0.05
         acc : float, optional
@@ -595,24 +599,35 @@ class PLEpy:
         """
         if isinstance(pnames, str):
             if pnames == "all":
+                assert idx is None
                 pnames = list(self.pnames)
             else:
+                if idx is not None:
+                    assert idx in self.pidx[pnames]
                 pnames = [pnames]
+        else:
+            assert idx is None
 
         # Define threshold of confidence level
         clevel = self.get_clevel(alpha)
 
         # create dictionaries for the confidence limits with the same
         # structure as self.popt
-        parub = copy.deepcopy(dict(self.popt))
-        parlb = copy.deepcopy(dict(self.popt))
+        if hasattr(self, "parub"):
+            parub = copy.deepcopy(dict(self.parub))
+        else:
+            parub = copy.deepcopy(dict(self.popt))
+        if hasattr(self, "parlb"):
+            parlb = copy.deepcopy(dict(self.parlb))
+        else:
+            parlb = copy.deepcopy(dict(self.popt))
         # Get upper & lower confidence limits
         for pname in pnames:
             # for indexed variables
             if self.pindexed[pname]:
                 f = 0
                 print(f)
-                for idx in self.pidx[pname]:
+                if idx is not None:
                     parlb[pname][idx] = self.bsearch(pname, clevel, acc,
                                                      direct=0, idx=idx)
                     print(parlb)
@@ -620,7 +635,16 @@ class PLEpy:
                                                      direct=1, idx=idx)
                     print(parub)
                     print(self.popt)
-                    f += 1
+                else:
+                    for idx in self.pidx[pname]:
+                        parlb[pname][idx] = self.bsearch(pname, clevel, acc,
+                                                        direct=0, idx=idx)
+                        print(parlb)
+                        parub[pname][idx] = self.bsearch(pname, clevel, acc,
+                                                        direct=1, idx=idx)
+                        print(parub)
+                        print(self.popt)
+                        f += 1
             # for unindexed variables
             else:
                 parlb[pname] = self.bsearch(pname, clevel, acc, direct=0)
