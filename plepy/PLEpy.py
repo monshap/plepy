@@ -134,7 +134,7 @@ class PLEpy:
             obj = sse_func(self.m, *sse_args)
         else:
             obj = self.obj
-        clevel = etol/2 + np.log(self.obj)
+        clevel = etol/2 + np.log(obj)
         self.clevel = clevel
         return clevel
 
