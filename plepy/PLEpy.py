@@ -126,17 +126,21 @@ class PLEpy:
         else:
             self.plist[pname].set_value(val)
 
-    def get_clevel(self, alpha: float=0.05):
+    def get_clevel(self, alpha: float=0.05, sse_func=None):
         # determine confidence threshold value
         from scipy.stats.distributions import chi2
         etol = chi2.isf(alpha, df=1)
+        if sse_func is not None:
+            obj = sse_func(self.m)
+        else:
+            obj = self.obj
         clevel = etol/2 + np.log(self.obj)
         self.clevel = clevel
         return clevel
 
     def get_PL(self, pnames="all", n: int=20, min_step: float=1e-3,
                dtol: float=0.2, save: bool=False, fname="tmp_PLfile.json",
-               debug=False):
+               debug=False, sse_func=None):
         """Once bounds are found, calculate likelihood profiles for
         each parameter
 
@@ -165,10 +169,14 @@ class PLEpy:
         debug: bool, optional
             whether to print additional information during profiling, by
             default False
+        sse_func: Callable, optional
+            function handle that calculates the sum of squared error if using
+            something other than model's objective function, by default None
         """
         from plepy.helper import sig_figs
 
-        def inner_loop(xopt, xb, direct=1, idx=None, debug=False) -> dict:
+        def inner_loop(xopt, xb, direct=1, idx=None, debug=False,
+                       sse_func=None) -> dict:
             from plepy.helper import sflag, sig_figs
 
             pdict = {}
@@ -196,7 +204,11 @@ class PLEpy:
                     rx = self.m_eval(pname, x, idx=idx, reset=False)
                     xdict["flag"] = sflag(rx)
                     self.m.solutions.load_from(rx)
-                    xdict["obj"] = np.log(pe.value(self.m.obj))
+                    if sse_func is not None:
+                        obj = sse_func(self.m)
+                    else:
+                        obj = pe.value(self.m.obj)
+                    xdict["obj"] = np.log(obj)
                     # store values of other parameters at each point
                     for p in self.pnames:
                         xdict[p] = self.getval(p)
@@ -251,7 +263,11 @@ class PLEpy:
                         rx = self.m_eval(pname, x, idx=idx, reset=False)
                         xdict["flag"] = sflag(rx)
                         self.m.solutions.load_from(rx)
-                        xdict["obj"] = np.log(pe.value(self.m.obj))
+                        if sse_func is not None:
+                            obj = sse_func(self.m)
+                        else:
+                            obj = pe.value(self.m.obj)
+                        xdict["obj"] = np.log(obj)
                         # store values of other parameters at each pt
                         for p in self.pnames:
                             xdict[p] = self.getval(p)
@@ -320,8 +336,10 @@ class PLEpy:
                     print(f"Optimized value: {sig_figs(xopt, 3)}",
                           f"Lower C.L.: {sig_figs(xlb, 3)}",
                           f"Upper C.L.: {sig_figs(xub, 3)}", sep="\n")
-                    kPLup = inner_loop(xopt, xub, direct=1, idx=k, debug=debug)
-                    kPLdn = inner_loop(xopt, xlb, direct=0, idx=k, debug=debug)
+                    kPLup = inner_loop(xopt, xub, direct=1, idx=k, debug=debug,
+                                       sse_func=sse_func)
+                    kPLdn = inner_loop(xopt, xlb, direct=0, idx=k, debug=debug,
+                                       sse_func=sse_func)
                     kPL = {**kPLup, **kPLdn}
                     parPL[k] = kPL
                     self.plist[pname][k].free()
@@ -335,8 +353,10 @@ class PLEpy:
                 print(f"Optimized value: {sig_figs(xopt, 3)}",
                       f"Lower C.L.: {sig_figs(xlb, 3)}",
                       f"Upper C.L.: {sig_figs(xub, 3)}", sep="\n")
-                parPLup = inner_loop(xopt, xub, direct=1, debug=debug)
-                parPLdn = inner_loop(xopt, xlb, direct=0, debug=debug)
+                parPLup = inner_loop(xopt, xub, direct=1, debug=debug,
+                                     sse_func=sse_func)
+                parPLdn = inner_loop(xopt, xlb, direct=0, debug=debug,
+                                     sse_func=sse_func)
                 # combine results into parameter profile likelihood
                 parPL = {**parPLup, **parPLdn}
                 PLdict[pname] = parPL
@@ -373,7 +393,7 @@ class PLEpy:
         return self.solver.solve(self.m, tee=self.tee)
 
     def bsearch(self, pname: str, clevel: float, acc: float,
-                direct: int=1, idx=None) -> float:
+                direct: int=1, idx=None, sse_func=None) -> float:
         """Binary search for confidence limit
         Args
         ----
@@ -391,18 +411,21 @@ class PLEpy:
             direction to search (0=downwards, 1=upwards), by default 1
         idx: optional
             for indexed parameters, the value of the index to get the
-            confidence limits for
+            confidence limits for, by default None
+        sse_func: Callable, optional
+            function handle that calculates the sum of squared error if using
+            something other than model's objective function, by default None
 
         Returns
         -------
-        float
+        pCI
             value of parameter bound
         """
         import math
         from plepy.helper import sflag, sig_figs
 
         def feasible_bound(pname, x_mid, x_in, r_mid, clevel, ctol, direct=1,
-                           idx=None, nsig=3):
+                           idx=None, nsig=3, sse_func=None):
             # Find furthest feasible bound
             print("Entering feasibility check...")
             print(" "*80)
@@ -411,7 +434,11 @@ class PLEpy:
             print("-"*10, "-"*10, "-"*10, sep="-+-")
 
             self.m.solutions.load_from(r_mid)
-            err = np.log(pe.value(self.m.obj))
+            if sse_func is not None:
+                obj = sse_func(self.m)
+            else:
+                obj = pe.value(self.m.obj)
+            err = np.log(obj)
             if direct:
                 x_high = x_mid
                 x_low = x_in
@@ -435,7 +462,11 @@ class PLEpy:
                 if fcheck == 1:
                     x_out = float(x_mid)
                 self.m.solutions.load_from(r_mid)
-                err = np.log(pe.value(self.m.obj))
+                if sse_func is not None:
+                    obj = sse_func(self.m)
+                else:
+                    obj = pe.value(self.m.obj)
+                err = np.log(obj)
                 # if feasbile, but not over CL threshold, continue
                 # search outward from current midpoint
                 if fcheck == 0 and err < clevel:
@@ -509,7 +540,11 @@ class PLEpy:
                                                   clevel, ctol, direct=direct,
                                                   idx=idx)
         self.m.solutions.load_from(r_mid)
-        err = np.log(pe.value(self.m.obj))
+        if sse_func is not None:
+            obj = sse_func(self.m)
+        else:
+            obj = pe.value(self.m.obj)
+        err = np.log(obj)
         # If solution is *still* infeasible, there is no feasible upper limit.
         # Set to xopt
         if fcheck == 1:
@@ -552,7 +587,11 @@ class PLEpy:
                 r_mid = self.m_eval(pname, x_mid, idx=idx)
                 fcheck = sflag(r_mid)
                 self.m.solutions.load_from(r_mid)
-                err = np.log(pe.value(self.m.obj))
+                if sse_func is not None:
+                    obj = sse_func(self.m)
+                else:
+                    obj = pe.value(self.m.obj)
+                err = np.log(obj)
                 biter += 1
                 # if midpoint infeasible, continue search inward
                 if fcheck == 1:
@@ -581,7 +620,7 @@ class PLEpy:
         return pCI
 
     def get_clims(self, pnames="all", idx=None, alpha: float=0.05,
-                  acc: float=0.01):
+                  acc: float=0.01, sse_func=None):
         """Get confidence limits of parameters
         Keywords
         --------
@@ -596,6 +635,9 @@ class PLEpy:
         acc : float, optional
             maximum fractional difference between binary search bounds
             allowed for convergence, by default 0.01
+        sse_func: Callable, optional
+            function handle that calculates the sum of squared error if using
+            something other than model's objective function, by default None
         """
         if isinstance(pnames, str):
             if pnames == "all":
@@ -609,7 +651,7 @@ class PLEpy:
             assert idx is None
 
         # Define threshold of confidence level
-        clevel = self.get_clevel(alpha)
+        clevel = self.get_clevel(alpha, sse_func=sse_func)
 
         # create dictionaries for the confidence limits with the same
         # structure as self.popt
@@ -627,19 +669,25 @@ class PLEpy:
             if self.pindexed[pname]:
                 if idx is not None:
                     parlb[pname][idx] = self.bsearch(pname, clevel, acc,
-                                                     direct=0, idx=idx)
+                                                     direct=0, idx=idx,
+                                                     sse_func=sse_func)
                     parub[pname][idx] = self.bsearch(pname, clevel, acc,
-                                                     direct=1, idx=idx)
+                                                     direct=1, idx=idx,
+                                                     sse_func=sse_func)
                 else:
                     for idx in self.pidx[pname]:
                         parlb[pname][idx] = self.bsearch(pname, clevel, acc,
-                                                        direct=0, idx=idx)
+                                                         direct=0, idx=idx,
+                                                         sse_func=sse_func)
                         parub[pname][idx] = self.bsearch(pname, clevel, acc,
-                                                        direct=1, idx=idx)
+                                                         direct=1, idx=idx,
+                                                         sse_func=sse_func)
             # for unindexed variables
             else:
-                parlb[pname] = self.bsearch(pname, clevel, acc, direct=0)
-                parub[pname] = self.bsearch(pname, clevel, acc, direct=1)
+                parlb[pname] = self.bsearch(pname, clevel, acc, direct=0,
+                                            sse_func=sse_func)
+                parub[pname] = self.bsearch(pname, clevel, acc, direct=1,
+                                            sse_func=sse_func)
         self.parub = parub
         self.parlb = parlb
 
