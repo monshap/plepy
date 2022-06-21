@@ -706,7 +706,7 @@ class PLEpy:
     def to_json(self, filename):
         # save existing attributes to JSON file
         atts = ["pnames", "indices", "obj", "pindexed", "pidx", "popt",
-                "pbounds", "parlb", "parub", "clevel", "PLdict"]
+                "pbounds", "parlb", "parub", "clevel", "PLdict", "objname"]
         sv_dict = {}
         for att in atts:
             # if PLEpy attribute exists, convert it to a JSON
