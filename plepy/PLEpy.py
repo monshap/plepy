@@ -68,7 +68,7 @@ class PLEpy:
         obj_tuple = next(self.m.component_map(ctype=pe.Objective).items())
         self.objname = obj_tuple[0]
         self.objitem = obj_tuple[1]
-        self.obj = pe.value(m_obj)    # original objective value
+        self.obj = pe.value(self.objitem)    # original objective value
         pprofile = {p: self.m.find_component(p) for p in self.pnames}
         # list of Pyomo Variable objects to be profiled
         self.plist = pprofile
