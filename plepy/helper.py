@@ -59,7 +59,8 @@ def sflag(results):
 
 
 def plot_PL(PLdict, clevel: float, pnames='all', covar='all', join: bool=False,
-            jmax: int=4, disp: str='show', fprefix: str='tmp_fig', **dispkwds):
+            jmax: int=4, disp: str='show', fprefix: str='tmp_fig',
+            debug=False, **dispkwds):
     """Plot likelihood profiles for specified parameters
 
     Args
@@ -96,6 +97,8 @@ def plot_PL(PLdict, clevel: float, pnames='all', covar='all', join: bool=False,
     fprefix: str, optional
         filename prefix to give figures if disp='save', by default
         'tmp_fig'
+    debug: bool, optional
+        whether or not to print extra statements for debugging
     **dispkwds: optional
         keywords to pass to display function (either fig.show() or
         fig.savefig())
@@ -184,14 +187,16 @@ def plot_PL(PLdict, clevel: float, pnames='all', covar='all', join: bool=False,
     figs = {}
     axs = {}
     while nleft > 0:
-        print('d: %i' % (d))
+        if debug:
+            print('d: %i' % (d))
         figs[d], axs[d] = plt.subplots(2, ncur, figsize=(3.5*ncur, 9),
                                        sharex='col', sharey='row')
         if ncur == 1:
             axs[d] = np.array([[axs[d][i]] for i in range(2)])
         for i in range(ncur):
-            print('b: %i' % (b))
-            print('c: %i' % (c))
+            if debug:
+                print('b: %i' % (b))
+                print('c: %i' % (c))
             key = pnames[c]
             if key in list(pidx.keys()):
                 idx = True
