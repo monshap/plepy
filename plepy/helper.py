@@ -104,12 +104,12 @@ def plot_PL(PLdict, clevel: float, pnames='all', covar='all', join: bool=False,
         fig.savefig())
     """
     import matplotlib.pyplot as plt
-    import seaborn as sns
+    from seaborn import color_palette
 
     # TODO: enable plotting of individual index values for indexed
     # variables
 
-    cpal = sns.color_palette("deep")
+    cpal = color_palette("deep")
     # If pnames or covar is a string, convert to appropriate list
     if isinstance(pnames, str):
         if pnames == 'all':
