@@ -15,9 +15,13 @@ def sig_figs(x, n):
 def recur_to_json(d: dict) -> dict:
     # recurssively convert dictionaries to compatible forms for JSON
     # serialization (keys must be strings)
+    import numpy as np
+
     for key in list(d.keys()):
         if isinstance(d[key], dict):
             d[key] = recur_to_json(d[key])
+        elif isinstance(d[key], np.ndarray):
+            d[key] = d[key].tolist()
     d2 = {str(key): d[key] for key in list(d.keys())}
     return d2
 
