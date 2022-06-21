@@ -65,9 +65,9 @@ class PLEpy:
         # bounds list of names of parameters to be profiled
         self.pnames = pnames
         self.indices = indices
-        m_items = self.m.component_objects()
-        obj_ls = list(filter(lambda x: isinstance(x, pe.Objective), m_items))
-        m_obj = obj_ls[0]
+        obj_tuple = next(self.m.component_map(ctype=pe.Objective).items())
+        self.objname = obj_tuple[0]
+        self.objitem = obj_tuple[1]
         self.obj = pe.value(m_obj)    # original objective value
         pprofile = {p: self.m.find_component(p) for p in self.pnames}
         # list of Pyomo Variable objects to be profiled
@@ -209,7 +209,7 @@ class PLEpy:
                     if sse_func is not None:
                         obj = sse_func(self.m, *sse_args)
                     else:
-                        obj = pe.value(self.m.obj)
+                        obj = pe.value(self.objitem)
                     xdict["obj"] = np.log(obj)
                     # store values of other parameters at each point
                     for p in self.pnames:
@@ -268,7 +268,7 @@ class PLEpy:
                         if sse_func is not None:
                             obj = sse_func(self.m, *sse_args)
                         else:
-                            obj = pe.value(self.m.obj)
+                            obj = pe.value(self.objitem)
                         xdict["obj"] = np.log(obj)
                         # store values of other parameters at each pt
                         for p in self.pnames:
@@ -441,7 +441,7 @@ class PLEpy:
             if sse_func is not None:
                 obj = sse_func(self.m, *sse_args)
             else:
-                obj = pe.value(self.m.obj)
+                obj = pe.value(self.objitem)
             err = np.log(obj)
             if direct:
                 x_high = x_mid
@@ -469,7 +469,7 @@ class PLEpy:
                 if sse_func is not None:
                     obj = sse_func(self.m, *sse_args)
                 else:
-                    obj = pe.value(self.m.obj)
+                    obj = pe.value(self.objitem)
                 err = np.log(obj)
                 # if feasbile, but not over CL threshold, continue
                 # search outward from current midpoint
@@ -547,7 +547,7 @@ class PLEpy:
         if sse_func is not None:
             obj = sse_func(self.m, *sse_args)
         else:
-            obj = pe.value(self.m.obj)
+            obj = pe.value(self.objitem)
         err = np.log(obj)
         # If solution is *still* infeasible, there is no feasible upper limit.
         # Set to xopt
@@ -594,7 +594,7 @@ class PLEpy:
                 if sse_func is not None:
                     obj = sse_func(self.m, *sse_args)
                 else:
-                    obj = pe.value(self.m.obj)
+                    obj = pe.value(self.objitem)
                 err = np.log(obj)
                 biter += 1
                 # if midpoint infeasible, continue search inward
