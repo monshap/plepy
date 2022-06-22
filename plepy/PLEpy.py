@@ -704,6 +704,8 @@ class PLEpy:
         self.parlb = parlb
 
     def to_json(self, filename):
+        import copy
+
         # save existing attributes to JSON file
         atts = ["pnames", "indices", "obj", "pindexed", "pidx", "popt",
                 "pbounds", "parlb", "parub", "clevel", "PLdict", "objname"]
@@ -712,10 +714,11 @@ class PLEpy:
             # if PLEpy attribute exists, convert it to a JSON
             # compatible form and add it to sv_dict
             try:
-                sv_var = getattr(self, att)
+                sv_var = copy.deepcopy(getattr(self, att))
                 if isinstance(sv_var, dict):
-                    sv_var = recur_to_json(sv_var)
-                sv_dict[att] = sv_var
+                    sv_dict[att] = recur_to_json(sv_var)
+                else:
+                    sv_dict[att] = sv_var
             except AttributeError:
                 print(f"Attribute '{att}' does not exist. Skipping.")
         # write to JSON file
