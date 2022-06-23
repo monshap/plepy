@@ -138,21 +138,20 @@ class PLEpy:
         self.clevel = clevel
         return clevel
 
-    def get_PL(self, pnames="all", n: int=20, min_step: float=1e-3,
+    def get_PL(self, pnames="all", idx=None, n: int=20, min_step: float=1e-3,
                dtol: float=0.2, save: bool=False, fname="tmp_PLfile.json",
                debug=False, sse_func=None, sse_args=[]):
         """Once bounds are found, calculate likelihood profiles for
         each parameter
 
-        Args
-        ----
-        pnames: list or str
+        Keywords
+        --------
+        pnames: list or str, optional
             name(s) of parameters to generate likelihood profiles for,
             or "all" to generate profiles for all model parameters, by
             default "all"
-
-        Keywords
-        --------
+        idx: optional
+            index to get profile, by default None
         n : int, optional
             minimum number of discretization points between optimum and
             each parameter bound, by default 20
@@ -175,6 +174,8 @@ class PLEpy:
         sse_args: list, optional
             list of arguments to pass to sse_func
         """
+        import copy
+
         from plepy.helper import sig_figs
 
         def inner_loop(xopt, xb, direct=1, idx=None, debug=False,
@@ -310,12 +311,20 @@ class PLEpy:
 
         if isinstance(pnames, str):
             if pnames == "all":
+                assert idx is None
                 pnames = list(self.pnames)
             else:
+                if idx is not None:
+                    assert idx in self.pidx[pnames]
                 pnames = [pnames]
+        else:
+            assert idx is None
 
         # master dictionary for all parameter likelihood profiles
-        PLdict = {}
+        if hasattr(self, PLdict):
+            PLdict = copy.deepcopy(self.PLdict)
+        else:
+            PLdict = {}
         # generate profiles for parameters indicated
         for pname in pnames:
             print(f"Profiling {pname}...")
@@ -327,24 +336,46 @@ class PLEpy:
             assert self.parlb[pname] is not None, emsg
             assert self.parub[pname] is not None, emsg
 
-            if self.pindexed[pname]:
+            if pname in PLdict:
+                parPL = PLdict[pname]
+            else:
                 parPL = {}
-                for k in self.pidx[pname]:
-                    self.plist[pname][k].fix()
-                    xopt = self.popt[pname][k]
-                    xlb = self.parlb[pname][k]
-                    xub = self.parub[pname][k]
-                    print(f"Index: {k}")
+            if self.pindexed[pname]:
+                if idx is not None:
+                    self.plist[pname][idx].fix()
+                    xopt = self.popt[pname][idx]
+                    xlb = self.parlb[pname][idx]
+                    xub = self.parub[pname][idx]
+                    print(f"Index: {idx}")
                     print(f"Optimized value: {sig_figs(xopt, 3)}",
                           f"Lower C.L.: {sig_figs(xlb, 3)}",
                           f"Upper C.L.: {sig_figs(xub, 3)}", sep="\n")
-                    kPLup = inner_loop(xopt, xub, direct=1, idx=k, debug=debug,
-                                       sse_func=sse_func, sse_args=sse_args)
-                    kPLdn = inner_loop(xopt, xlb, direct=0, idx=k, debug=debug,
-                                       sse_func=sse_func, sse_args=sse_args)
+                    kPLup = inner_loop(xopt, xub, direct=1, idx=idx,
+                                       debug=debug, sse_func=sse_func,
+                                       sse_args=sse_args)
+                    kPLdn = inner_loop(xopt, xlb, direct=0, idx=idx,
+                                       debug=debug, sse_func=sse_func,
+                                       sse_args=sse_args)
                     kPL = {**kPLup, **kPLdn}
-                    parPL[k] = kPL
-                    self.plist[pname][k].free()
+                    parPL[idx] = kPL
+                    self.plist[pname][idx].free()
+                else:
+                    for k in self.pidx[pname]:
+                        self.plist[pname][k].fix()
+                        xopt = self.popt[pname][k]
+                        xlb = self.parlb[pname][k]
+                        xub = self.parub[pname][k]
+                        print(f"Index: {k}")
+                        print(f"Optimized value: {sig_figs(xopt, 3)}",
+                            f"Lower C.L.: {sig_figs(xlb, 3)}",
+                            f"Upper C.L.: {sig_figs(xub, 3)}", sep="\n")
+                        kPLup = inner_loop(xopt, xub, direct=1, idx=k, debug=debug,
+                                        sse_func=sse_func, sse_args=sse_args)
+                        kPLdn = inner_loop(xopt, xlb, direct=0, idx=k, debug=debug,
+                                        sse_func=sse_func, sse_args=sse_args)
+                        kPL = {**kPLup, **kPLdn}
+                        parPL[k] = kPL
+                        self.plist[pname][k].free()
                 PLdict[pname] = parPL
             else:
                 self.plist[pname].fix()
