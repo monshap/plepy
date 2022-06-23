@@ -12,6 +12,21 @@ def sig_figs(x, n):
     return round(x, -(first_sig_fig - (n-1)))
 
 
+def dict_depth(d):
+    if isinstance(d, dict):
+        return 1 + max(map(dict_depth, d.values()), default=0)
+    else:
+        return 0
+
+
+def recur_key_search(d: dict, k):
+    if k in d.keys():
+        return d
+    else:
+        dvals = sorted(d.values(), key=dict_depth)
+        return recur_key_search(dvals[0], k)
+
+
 def recur_to_json(d: dict) -> dict:
     # recurssively convert dictionaries to compatible forms for JSON
     # serialization (keys must be strings)
@@ -58,9 +73,9 @@ def sflag(results):
     return flag
 
 
-def plot_PL(PLdict, clevel: float, pnames='all', covar='all', join: bool=False,
-            jmax: int=4, disp: str='show', fprefix: str='tmp_fig',
-            debug=False, **dispkwds):
+def plot_PL(PLdict, clevel, pnames='all', idx=None, covar='all',
+            join: bool=False, jmax: int=4, disp: str='show',
+            fprefix: str='tmp_fig', debug=False, **dispkwds):
     """Plot likelihood profiles for specified parameters
 
     Args
@@ -69,14 +84,19 @@ def plot_PL(PLdict, clevel: float, pnames='all', covar='all', join: bool=False,
         profile likelihood data generated from PLEpy function,
         'get_PL()', has format:
         {'pname': {par_val: {keys: 'obj', 'par1', 'par2', etc.}}}
-    clevel: float
-        value of objective at confidence threshold
+    clevel: float or dict
+        value of objective at confidence threshold, if float it will be
+        applied to all parameters & indices, else the corresponding dictionary
+        values will be used
 
     Keywords
     --------
     pnames : list or str, optional
         parameter(s) to generate plots for, if 'all' will plot for all
         keys in outer level of dictionary, by default 'all'
+    idx : optional
+        if plotting single index of a parameter, the value of that index, by
+        default None
     covar : list or str, optional
         parameter(s) to include covariance plots for, if 'all' will
         include all keys in outer level of dictionary, by default 'all'
@@ -113,40 +133,33 @@ def plot_PL(PLdict, clevel: float, pnames='all', covar='all', join: bool=False,
     # If pnames or covar is a string, convert to appropriate list
     if isinstance(pnames, str):
         if pnames == 'all':
+            assert idx is None
             pnames = list(PLdict.keys())
         else:
+            plkeys = list(PLdict.keys())
+            assert pnames in plkeys
+            if idx is not None:
+                assert idx in PLdict[pnames].keys()
             pnames = [pnames]
+    else:
+        assert isinstance(pnames, list)
+        assert idx is None
+
     if isinstance(covar, str):
         if covar == 'all':
-            plkeys = list(PLdict.keys())
-            dict1 = PLdict[plkeys[0]]
-            d1keys = list(dict1.keys())
-            dict2 = dict1[d1keys[0]]
-            d2keys = list(dict2.keys())
-            if 'obj' in d2keys:
-                covar = [k for k in d2keys if k not in ['obj', 'flag']]
-            else:
-                dict3 = dict2[d2keys[0]]
-                d3keys = list(dict3.keys())
-                covar = [k for k in d3keys if k not in ['obj', 'flag']]
+            obj_d = recur_key_search(PLdict, "obj")
+            covar = [k for k in obj_d.keys() if k not in ["obj", "flag"]]
         else:
+            obj_d = recur_key_search(PLdict, "obj")
+            assert covar in obj_d.keys()
             covar = [covar]
 
     # Determine which parameters (if any) are indexed
     pidx = {}
-    dict1 = PLdict[pnames[0]]
-    d1keys = list(dict1.keys())
-    dict2 = dict1[d1keys[0]]
-    d2keys = list(dict2.keys())
-    if 'obj' in d2keys:
-        for c in covar:
-            if isinstance(dict2[c], dict):
-                pidx[c] = list(dict2[c].keys())
-    else:
-        dict3 = dict2[d2keys[0]]
-        for c in covar:
-            if isinstance(dict3[c], dict):
-                pidx[c] = list(dict3[c].keys())
+    obj_d = recur_key_search(PLdict, "obj")
+    pindexed = list(filter(lambda x: dict_depth(obj_d[x]), obj_d.keys()))
+    for par in pindexed:
+        pidx[par] = list(obj_d[par].keys())
 
     # Initialize counting scheme for tracking figures/subplots
     npars = len(pnames)
@@ -159,7 +172,8 @@ def plot_PL(PLdict, clevel: float, pnames='all', covar='all', join: bool=False,
         klen = len(pidx[k])
         if k in pnames:
             npars += (klen - 1)
-        ncovs += (klen - 1)
+        if k in covar:
+            ncovs += (klen - 1)
         r0, g0, b0 = cmap[k]
         cmult = np.linspace(0.1, 1.5, num=klen, endpoint=True)
         cmap[k] = {pidx[k][i]: (min(cmult[i]*r0, 1), min(cmult[i]*g0, 1),
@@ -198,8 +212,8 @@ def plot_PL(PLdict, clevel: float, pnames='all', covar='all', join: bool=False,
                 print('b: %i' % (b))
                 print('c: %i' % (c))
             key = pnames[c]
-            if key in list(pidx.keys()):
-                idx = True
+            if key in pindexed:
+                indexed = True
                 ikey = pidx[key][b]
                 x = sorted([float(j) for j in PLdict[key][ikey].keys()])
                 xstr = [str(j) for j in x]
@@ -208,7 +222,7 @@ def plot_PL(PLdict, clevel: float, pnames='all', covar='all', join: bool=False,
                 if b == len(pidx[key]):
                     b = 0
             else:
-                idx = False
+                indexed = False
                 x = sorted([float(j) for j in PLdict[key].keys()])
                 xstr = [str(j) for j in x]
                 # plot objective value in first row
@@ -216,12 +230,12 @@ def plot_PL(PLdict, clevel: float, pnames='all', covar='all', join: bool=False,
             axs[d][0, i].plot(x, y1, ls='None', marker='o')
             axs[d][0, i].plot(x, len(x)*[clevel], color='red')
             # plot other parameter values in second row
-            if idx:
+            if indexed:
                 for p in covar:
-                    if p in list(pidx.keys()):
+                    if p in pindexed:
                         for a in pidx[p]:
                             if not (p == key and a == ikey):
-                                lbl = ''.join([p, '[', str(a), ']'])
+                                lbl = f"{p}[{a}]"
                                 yi = [PLdict[key][ikey][j][p][a] for j in xstr]
                                 axs[d][1, i].plot(x, yi, ls='None', marker='o',
                                                   label=lbl, color=cmap[p][a])
@@ -229,13 +243,13 @@ def plot_PL(PLdict, clevel: float, pnames='all', covar='all', join: bool=False,
                         yi = [PLdict[key][ikey][j][p] for j in xstr]
                         axs[d][1, i].plot(x, yi, ls='None', marker='o',
                                           label=p, color=cmap[p])
-                klbl = ''.join([key, '[', str(ikey), ']'])
+                klbl = f"{key}[{ikey}]"
                 axs[d][1, i].set_xlabel(klbl)
             else:
                 for p in [p for p in covar if p != key]:
-                    if p in list(pidx.keys()):
+                    if p in pindexed:
                         for a in pidx[p]:
-                            lbl = ''.join([p, '[', str(a), ']'])
+                            lbl = f"{p}[{a}]"
                             yi = [PLdict[key][j][p][a] for j in xstr]
                             axs[d][1, i].plot(x, yi, ls='None', marker='o',
                                               label=lbl, color=cmap[p][a])
