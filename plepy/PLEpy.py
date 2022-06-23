@@ -401,11 +401,13 @@ class PLEpy:
                 json.dump(jdict, f)
 
     def plot_PL(self, **kwds):
+        import copy
+
         from plepy.helper import plot_PL
 
         assert isinstance(self.PLdict, dict)
         assert isinstance(self.clevel, float)
-        jdict = recur_to_json(self.PLdict)
+        jdict = recur_to_json(copy.deepcopy(self.PLdict))
         figs, axs = plot_PL(jdict, self.clevel, **kwds)
         return figs, axs
 
