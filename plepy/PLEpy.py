@@ -184,9 +184,11 @@ class PLEpy:
 
             pdict = {}
             if direct:
+                print(" "*80)
                 print("Going up...")
                 x0 = np.linspace(xopt, xb, n+2, endpoint=True)
             else:
+                print(" "*80)
                 print("Going down...")
                 x0 = np.linspace(xb, xopt, n+2, endpoint=True)
             if debug:
@@ -328,6 +330,7 @@ class PLEpy:
         # generate profiles for parameters indicated
         for pname in pnames:
             print(f"Profiling {pname}...")
+            print(" "*80)
             # make sure upper and lower confidence limits have been
             # specified or calculated using get_clims()
             emsg = ("Parameter confidence limits must be determined "
