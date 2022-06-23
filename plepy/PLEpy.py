@@ -321,7 +321,7 @@ class PLEpy:
             assert idx is None
 
         # master dictionary for all parameter likelihood profiles
-        if hasattr(self, PLdict):
+        if hasattr(self, "PLdict"):
             PLdict = copy.deepcopy(self.PLdict)
         else:
             PLdict = {}
